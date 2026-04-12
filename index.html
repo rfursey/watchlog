@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WatchLog</title>
+<style>
+  :root {
+    --bg: #0f0f13;
+    --surface: #1a1a24;
+    --surface2: #22222f;
+    --accent: #e50914;
+    --accent2: #ff6b35;
+    --text: #f0f0f0;
+    --muted: #888;
+    --border: #2e2e3e;
+    --star: #f5c518;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .nav-brand { font-size: 20px; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
+  .nav-brand span { color: var(--text); }
+  .nav-tabs { display: flex; gap: 4px; }
+  .nav-tab {
+    background: none; border: none; color: var(--muted);
+    padding: 8px 14px; border-radius: 8px; cursor: pointer;
+    font-size: 14px; font-weight: 500; transition: all 0.15s;
+  }
+  .nav-tab:hover { background: var(--surface2); color: var(--text); }
+  .nav-tab.active { background: var(--accent); color: white; }
+  .btn-add {
+    background: var(--accent); color: white; border: none;
+    padding: 8px 18px; border-radius: 8px; cursor: pointer;
+    font-size: 14px; font-weight: 600;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .btn-add:hover { opacity: 0.85; }
+  .btn-add:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+
+  .stats { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 20px;
+    flex: 1; min-width: 120px; text-align: center;
+  }
+  .stat-num { font-size: 28px; font-weight: 700; color: var(--accent); }
+  .stat-label { font-size: 12px; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .search-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+  .search-input {
+    flex: 1; min-width: 180px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); padding: 10px 14px; font-size: 14px; outline: none;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .filter-select {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); padding: 10px 14px;
+    font-size: 14px; outline: none; cursor: pointer;
+  }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  .card:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .card-photo { width: 100%; height: 160px; object-fit: cover; background: var(--surface2); display: block; cursor: pointer; }
+  .card-photo-placeholder {
+    width: 100%; height: 160px; background: var(--surface2);
+    display: flex; align-items: center; justify-content: center; font-size: 48px;
+  }
+  .card-body { padding: 14px; }
+  .card-type { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--accent2); margin-bottom: 4px; }
+  .card-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; line-height: 1.3; }
+  .card-meta { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .card-stars { color: var(--star); font-size: 14px; margin-bottom: 8px; }
+  .card-notes { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .card-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .btn-sm {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--muted); padding: 5px 10px; border-radius: 6px;
+    cursor: pointer; font-size: 12px;
+  }
+  .btn-sm:hover { color: var(--text); border-color: var(--muted); }
+  .btn-sm.danger:hover { color: #ff4444; border-color: #ff4444; }
+
+  /* LOADING */
+  .loading {
+    grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--muted);
+  }
+  .spinner {
+    width: 40px; height: 40px; border: 3px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty { text-align: center; padding: 60px 20px; color: var(--muted); grid-column: 1/-1; }
+  .empty-icon { font-size: 56px; margin-bottom: 16px; }
+  .empty h3 { font-size: 18px; color: var(--text); margin-bottom: 8px; }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); padding: 12px 24px; border-radius: 8px;
+    font-size: 14px; z-index: 500; transition: transform 0.3s;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.error { border-color: #ff4444; color: #ff4444; }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+    z-index: 200; align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; width: 100%; max-width: 500px;
+    max-height: 90vh; overflow-y: auto; padding: 24px;
+  }
+  .modal h2 { font-size: 20px; margin-bottom: 20px; }
+  .modal-close {
+    float: right; background: none; border: none; color: var(--muted);
+    font-size: 22px; cursor: pointer; line-height: 1; margin-top: -4px;
+  }
+  .modal-close:hover { color: var(--text); }
+
+  .form-group { margin-bottom: 16px; }
+  label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: var(--muted); }
+  input[type="text"], input[type="date"], textarea, select {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); padding: 10px 12px;
+    font-size: 14px; outline: none; font-family: inherit;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 80px; }
+
+  .star-picker { display: flex; gap: 6px; }
+  .star-btn {
+    background: none; border: none; font-size: 24px; cursor: pointer;
+    color: var(--border); transition: color 0.1s; padding: 2px;
+  }
+  .star-btn.lit { color: var(--star); }
+
+  .camera-section {
+    border: 2px dashed var(--border); border-radius: 10px;
+    padding: 16px; text-align: center; margin-bottom: 16px;
+  }
+  .camera-preview { width: 100%; border-radius: 8px; margin-bottom: 10px; display: none; }
+  .captured-preview { width: 100%; border-radius: 8px; margin-bottom: 10px; display: none; }
+  .camera-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .btn-camera {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); padding: 8px 16px; border-radius: 8px;
+    cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px;
+  }
+  .btn-camera:hover { border-color: var(--accent); }
+  #fileInput { display: none; }
+
+  .btn-save {
+    width: 100%; background: var(--accent); color: white; border: none;
+    padding: 12px; border-radius: 8px; font-size: 15px; font-weight: 600;
+    cursor: pointer; margin-top: 4px;
+  }
+  .btn-save:hover { opacity: 0.85; }
+  .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .photo-modal-img { width: 100%; border-radius: 8px; display: block; }
+
+  @media (max-width: 500px) {
+    nav { padding: 0 12px; }
+    .nav-brand { font-size: 16px; }
+    .nav-tab { padding: 6px 10px; font-size: 13px; }
+    .btn-add span { display: none; }
+    main { padding: 16px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">Watch<span>Log</span></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showTab('all')">All</button>
+    <button class="nav-tab" onclick="showTab('movie')">Movies</button>
+    <button class="nav-tab" onclick="showTab('show')">Shows</button>
+  </div>
+  <button class="btn-add" id="btnAdd" onclick="openAddModal()">
+    <span style="font-size:18px">+</span> <span>Add Entry</span>
+  </button>
+</nav>
+
+<main>
+  <div class="stats">
+    <div class="stat-card"><div class="stat-num" id="stat-total">—</div><div class="stat-label">Total Watched</div></div>
+    <div class="stat-card"><div class="stat-num" id="stat-movies">—</div><div class="stat-label">Movies</div></div>
+    <div class="stat-card"><div class="stat-num" id="stat-shows">—</div><div class="stat-label">Shows</div></div>
+    <div class="stat-card"><div class="stat-num" id="stat-avg">—</div><div class="stat-label">Avg Rating</div></div>
+  </div>
+  <div class="search-row">
+    <input class="search-input" type="text" id="searchInput" placeholder="Search by title..." oninput="renderList()">
+    <select class="filter-select" id="sortSelect" onchange="renderList()">
+      <option value="newest">Newest first</option>
+      <option value="oldest">Oldest first</option>
+      <option value="rating">Highest rated</option>
+      <option value="title">A–Z</option>
+    </select>
+  </div>
+  <div class="grid" id="grid">
+    <div class="loading"><div class="spinner"></div><p>Loading your watchlist...</p></div>
+  </div>
+</main>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('addModal')">&#x2715;</button>
+    <h2 id="modalTitle">Add Entry</h2>
+
+    <div class="camera-section">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Snap a photo of the TV screen (optional)</p>
+      <video id="cameraPreview" class="camera-preview" autoplay playsinline muted></video>
+      <img id="capturedPreview" class="captured-preview" alt="Captured">
+      <canvas id="snapCanvas" style="display:none"></canvas>
+      <div class="camera-btns">
+        <button class="btn-camera" onclick="startCamera()">📷 Open Camera</button>
+        <button class="btn-camera" id="snapBtn" style="display:none" onclick="snapPhoto()">✅ Snap Photo</button>
+        <button class="btn-camera" onclick="document.getElementById('fileInput').click()">📁 Upload Photo</button>
+        <button class="btn-camera" id="clearPhotoBtn" style="display:none" onclick="clearPhoto()">🗑 Remove Photo</button>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" onchange="handleFileUpload(event)">
+    </div>
+
+    <div class="form-group">
+      <label>Title *</label>
+      <input type="text" id="f-title" placeholder="e.g. Oppenheimer" required>
+    </div>
+    <div class="form-group">
+      <label>Type</label>
+      <select id="f-type" onchange="toggleEpisodeRow()">
+        <option value="movie">Movie</option>
+        <option value="show">TV Show</option>
+        <option value="documentary">Documentary</option>
+        <option value="mini-series">Mini-Series</option>
+        <option value="sport">Sport / Event</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="form-group" id="episodeRow" style="display:none">
+      <label>Season / Episode (optional)</label>
+      <input type="text" id="f-episode" placeholder="e.g. S2 E4, or 'Season 1'">
+    </div>
+    <div class="form-group">
+      <label>Date Watched</label>
+      <input type="date" id="f-date">
+    </div>
+    <div class="form-group">
+      <label>Where watched (optional)</label>
+      <input type="text" id="f-platform" placeholder="e.g. Netflix, Disney+, Prime...">
+    </div>
+    <div class="form-group">
+      <label>Rating</label>
+      <div class="star-picker" id="starPicker">
+        <button class="star-btn" data-val="1" onclick="setRating(1)">★</button>
+        <button class="star-btn" data-val="2" onclick="setRating(2)">★</button>
+        <button class="star-btn" data-val="3" onclick="setRating(3)">★</button>
+        <button class="star-btn" data-val="4" onclick="setRating(4)">★</button>
+        <button class="star-btn" data-val="5" onclick="setRating(5)">★</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Notes (optional)</label>
+      <textarea id="f-notes" placeholder="What did you think? Would you recommend it?"></textarea>
+    </div>
+    <button class="btn-save" id="btnSave" onclick="saveEntry()">Save Entry</button>
+  </div>
+</div>
+
+<!-- PHOTO VIEW MODAL -->
+<div class="modal-overlay" id="photoModal">
+  <div class="modal" style="background:#000;border-color:#333;">
+    <button class="modal-close" onclick="closeModal('photoModal')" style="color:#fff">&#x2715;</button>
+    <img id="photoModalImg" class="photo-modal-img" src="" alt="Photo">
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+  let entries = [];
+  let currentTab = 'all';
+  let editingId = null;
+  let capturedPhoto = null;
+  let cameraStream = null;
+  let currentRating = 0;
+
+  // ─── API ─────────────────────────────────────────────────────────────────────
+  async function loadEntries() {
+    try {
+      const res = await fetch('/api/entries');
+      if (!res.ok) throw new Error('Server error ' + res.status);
+      entries = await res.json();
+      renderList();
+    } catch (err) {
+      showToast('Could not load entries — ' + err.message, true);
+      document.getElementById('grid').innerHTML = `<div class="empty">
+        <div class="empty-icon">⚠️</div>
+        <h3>Could not connect</h3>
+        <p>${err.message}</p>
+      </div>`;
+    }
+  }
+
+  async function apiSave(entry) {
+    const res = await fetch('/api/entries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry)
+    });
+    if (!res.ok) throw new Error('Save failed: ' + res.status);
+    return res.json();
+  }
+
+  async function apiDelete(id) {
+    const res = await fetch('/api/entries/' + id, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Delete failed: ' + res.status);
+  }
+
+  // ─── TABS ─────────────────────────────────────────────────────────────────────
+  function showTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.nav-tab').forEach((btn, i) => {
+      btn.classList.toggle('active', ['all','movie','show'][i] === tab);
+    });
+    renderList();
+  }
+
+  // ─── RENDER ──────────────────────────────────────────────────────────────────
+  function renderList() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const sort = document.getElementById('sortSelect').value;
+
+    let list = entries.filter(e => {
+      const matchTab = currentTab === 'all'
+        || e.type === currentTab
+        || (currentTab === 'show' && ['show','mini-series'].includes(e.type));
+      const matchSearch = !q
+        || (e.title||'').toLowerCase().includes(q)
+        || (e.notes||'').toLowerCase().includes(q)
+        || (e.platform||'').toLowerCase().includes(q);
+      return matchTab && matchSearch;
+    });
+
+    list.sort((a, b) => {
+      if (sort === 'newest') return new Date(b.date||0) - new Date(a.date||0);
+      if (sort === 'oldest') return new Date(a.date||0) - new Date(b.date||0);
+      if (sort === 'rating') return (b.rating||0) - (a.rating||0);
+      if (sort === 'title') return (a.title||'').localeCompare(b.title||'');
+      return 0;
+    });
+
+    const grid = document.getElementById('grid');
+    if (list.length === 0) {
+      grid.innerHTML = `<div class="empty">
+        <div class="empty-icon">🎬</div>
+        <h3>${q ? 'No results found' : 'Nothing logged yet'}</h3>
+        <p>${q ? 'Try a different search term' : 'Hit the + Add Entry button to get started'}</p>
+      </div>`;
+    } else {
+      grid.innerHTML = list.map(e => cardHTML(e)).join('');
+    }
+    updateStats();
+  }
+
+  function cardHTML(e) {
+    const typeIcons = { movie:'🎬', show:'📺', documentary:'🎞', 'mini-series':'📺', sport:'⚽', other:'🎥' };
+    const typeLabels = { movie:'Movie', show:'TV Show', documentary:'Documentary', 'mini-series':'Mini-Series', sport:'Sport / Event', other:'Other' };
+    const stars = e.rating ? '★'.repeat(e.rating) + '☆'.repeat(5-e.rating) : '';
+    const photo = e.photo
+      ? `<img class="card-photo" src="${e.photo}" onclick="viewPhoto('${e.id}')" alt="TV screenshot">`
+      : `<div class="card-photo-placeholder">${typeIcons[e.type]||'🎥'}</div>`;
+    const date = e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '';
+    const meta = [date, e.platform, e.episode].filter(Boolean).join(' · ');
+    return `<div class="card">
+      ${photo}
+      <div class="card-body">
+        <div class="card-type">${typeIcons[e.type]||'🎥'} ${typeLabels[e.type]||'Other'}</div>
+        <div class="card-title">${escHtml(e.title)}</div>
+        ${meta ? `<div class="card-meta">${escHtml(meta)}</div>` : ''}
+        ${stars ? `<div class="card-stars">${stars}</div>` : ''}
+        ${e.notes ? `<div class="card-notes">${escHtml(e.notes)}</div>` : ''}
+        <div class="card-actions">
+          <button class="btn-sm" onclick="editEntry('${e.id}')">✏ Edit</button>
+          <button class="btn-sm danger" onclick="deleteEntry('${e.id}')">🗑 Delete</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function escHtml(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function updateStats() {
+    const movies = entries.filter(e => e.type === 'movie').length;
+    const shows = entries.filter(e => ['show','mini-series'].includes(e.type)).length;
+    const ratings = entries.filter(e => e.rating).map(e => e.rating);
+    const avg = ratings.length ? (ratings.reduce((a,b)=>a+b,0)/ratings.length).toFixed(1) : '—';
+    document.getElementById('stat-total').textContent = entries.length;
+    document.getElementById('stat-movies').textContent = movies;
+    document.getElementById('stat-shows').textContent = shows;
+    document.getElementById('stat-avg').textContent = avg === '—' ? '—' : avg + '★';
+  }
+
+  // ─── MODAL ───────────────────────────────────────────────────────────────────
+  function openAddModal(id = null) {
+    editingId = id;
+    capturedPhoto = null;
+    currentRating = 0;
+    stopCamera();
+
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('modalTitle').textContent = id ? 'Edit Entry' : 'Add Entry';
+    document.getElementById('f-title').value = '';
+    document.getElementById('f-type').value = 'movie';
+    document.getElementById('f-episode').value = '';
+    document.getElementById('f-date').value = today;
+    document.getElementById('f-platform').value = '';
+    document.getElementById('f-notes').value = '';
+    document.getElementById('cameraPreview').style.display = 'none';
+    document.getElementById('capturedPreview').style.display = 'none';
+    document.getElementById('snapBtn').style.display = 'none';
+    document.getElementById('clearPhotoBtn').style.display = 'none';
+    document.getElementById('episodeRow').style.display = 'none';
+    updateStarUI(0);
+
+    if (id) {
+      const e = entries.find(x => x.id === id);
+      if (e) {
+        document.getElementById('f-title').value = e.title||'';
+        document.getElementById('f-type').value = e.type||'movie';
+        document.getElementById('f-episode').value = e.episode||'';
+        document.getElementById('f-date').value = e.date||today;
+        document.getElementById('f-platform').value = e.platform||'';
+        document.getElementById('f-notes').value = e.notes||'';
+        currentRating = e.rating||0;
+        updateStarUI(currentRating);
+        toggleEpisodeRow();
+        if (e.photo) {
+          capturedPhoto = e.photo;
+          document.getElementById('capturedPreview').src = e.photo;
+          document.getElementById('capturedPreview').style.display = 'block';
+          document.getElementById('clearPhotoBtn').style.display = 'inline-flex';
+        }
+      }
+    }
+    document.getElementById('addModal').classList.add('open');
+  }
+
+  function editEntry(id) { openAddModal(id); }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+    stopCamera();
+  }
+
+  async function saveEntry() {
+    const title = document.getElementById('f-title').value.trim();
+    if (!title) { showToast('Please enter a title', true); return; }
+
+    const entry = {
+      id: editingId || Date.now().toString(),
+      title,
+      type: document.getElementById('f-type').value,
+      episode: document.getElementById('f-episode').value.trim(),
+      date: document.getElementById('f-date').value,
+      platform: document.getElementById('f-platform').value.trim(),
+      rating: currentRating,
+      notes: document.getElementById('f-notes').value.trim(),
+      photo: capturedPhoto || null,
+    };
+
+    const btn = document.getElementById('btnSave');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    try {
+      const saved = await apiSave(entry);
+      if (editingId) {
+        const idx = entries.findIndex(x => x.id === editingId);
+        if (idx !== -1) entries[idx] = saved;
+      } else {
+        entries.unshift(saved);
+      }
+      closeModal('addModal');
+      renderList();
+      showToast(editingId ? 'Entry updated!' : 'Entry saved!');
+    } catch (err) {
+      showToast('Could not save — ' + err.message, true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Save Entry';
+    }
+  }
+
+  async function deleteEntry(id) {
+    if (!confirm('Delete this entry?')) return;
+    try {
+      await apiDelete(id);
+      entries = entries.filter(x => x.id !== id);
+      renderList();
+      showToast('Entry deleted');
+    } catch (err) {
+      showToast('Could not delete — ' + err.message, true);
+    }
+  }
+
+  // ─── STARS ───────────────────────────────────────────────────────────────────
+  function setRating(val) { currentRating = val; updateStarUI(val); }
+  function updateStarUI(val) {
+    document.querySelectorAll('.star-btn').forEach(btn => {
+      btn.classList.toggle('lit', parseInt(btn.dataset.val) <= val);
+    });
+  }
+
+  // ─── CAMERA ──────────────────────────────────────────────────────────────────
+  async function startCamera() {
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+      const vid = document.getElementById('cameraPreview');
+      vid.srcObject = cameraStream;
+      vid.style.display = 'block';
+      document.getElementById('capturedPreview').style.display = 'none';
+      document.getElementById('snapBtn').style.display = 'inline-flex';
+      document.getElementById('clearPhotoBtn').style.display = 'none';
+      capturedPhoto = null;
+    } catch (err) {
+      showToast('Camera unavailable — try uploading a photo instead', true);
+    }
+  }
+
+  function snapPhoto() {
+    const vid = document.getElementById('cameraPreview');
+    const canvas = document.getElementById('snapCanvas');
+    const maxW = 800;
+    const scale = Math.min(1, maxW / vid.videoWidth);
+    canvas.width = Math.round(vid.videoWidth * scale);
+    canvas.height = Math.round(vid.videoHeight * scale);
+    canvas.getContext('2d').drawImage(vid, 0, 0, canvas.width, canvas.height);
+    capturedPhoto = canvas.toDataURL('image/jpeg', 0.7);
+    document.getElementById('capturedPreview').src = capturedPhoto;
+    document.getElementById('capturedPreview').style.display = 'block';
+    document.getElementById('cameraPreview').style.display = 'none';
+    document.getElementById('snapBtn').style.display = 'none';
+    document.getElementById('clearPhotoBtn').style.display = 'inline-flex';
+    stopCamera();
+  }
+
+  function handleFileUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const maxW = 800;
+      const scale = Math.min(1, maxW / img.naturalWidth);
+      const canvas = document.getElementById('snapCanvas');
+      canvas.width = Math.round(img.naturalWidth * scale);
+      canvas.height = Math.round(img.naturalHeight * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      capturedPhoto = canvas.toDataURL('image/jpeg', 0.7);
+      document.getElementById('capturedPreview').src = capturedPhoto;
+      document.getElementById('capturedPreview').style.display = 'block';
+      document.getElementById('clearPhotoBtn').style.display = 'inline-flex';
+      URL.revokeObjectURL(url);
+      stopCamera();
+    };
+    img.src = url;
+    e.target.value = '';
+  }
+
+  function clearPhoto() {
+    capturedPhoto = null;
+    document.getElementById('capturedPreview').style.display = 'none';
+    document.getElementById('clearPhotoBtn').style.display = 'none';
+    stopCamera();
+  }
+
+  function stopCamera() {
+    if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+    document.getElementById('cameraPreview').style.display = 'none';
+    document.getElementById('snapBtn').style.display = 'none';
+  }
+
+  function toggleEpisodeRow() {
+    const type = document.getElementById('f-type').value;
+    document.getElementById('episodeRow').style.display = ['show','mini-series'].includes(type) ? 'block' : 'none';
+  }
+
+  function viewPhoto(id) {
+    const e = entries.find(x => x.id === id);
+    if (!e || !e.photo) return;
+    document.getElementById('photoModalImg').src = e.photo;
+    document.getElementById('photoModal').classList.add('open');
+  }
+
+  // ─── TOAST ───────────────────────────────────────────────────────────────────
+  let toastTimer;
+  function showToast(msg, isError = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (isError ? ' error' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.classList.remove('show'); }, 3000);
+  }
+
+  document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', e => { if (e.target === el) closeModal(el.id); });
+  });
+
+  // ─── INIT ────────────────────────────────────────────────────────────────────
+  loadEntries();
+</script>
+</body>
+</html>
