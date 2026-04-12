@@ -172,7 +172,21 @@
     border: 2px dashed var(--border); border-radius: 10px;
     padding: 16px; text-align: center; margin-bottom: 16px;
   }
-  .camera-preview { width: 100%; border-radius: 8px; margin-bottom: 10px; display: none; }
+  .camera-viewport {
+    position: relative; width: 100%; border-radius: 8px;
+    overflow: hidden; background: #000; margin-bottom: 10px; display: none;
+  }
+  .camera-preview {
+    width: 100%; max-height: 260px; object-fit: cover;
+    border-radius: 8px; display: block;
+  }
+  .snap-overlay {
+    position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+    background: rgba(229,9,20,0.9); color: white; border: none;
+    padding: 10px 24px; border-radius: 24px; font-size: 15px; font-weight: 600;
+    cursor: pointer; white-space: nowrap; backdrop-filter: blur(4px);
+  }
+  .snap-overlay:hover { background: rgba(229,9,20,1); }
   .captured-preview { width: 100%; border-radius: 8px; margin-bottom: 10px; display: none; }
   .camera-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
   .btn-camera {
@@ -245,12 +259,14 @@
 
     <div class="camera-section">
       <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Snap a photo of the TV screen (optional)</p>
-      <video id="cameraPreview" class="camera-preview" autoplay playsinline muted></video>
+      <div class="camera-viewport" id="cameraViewport">
+        <video id="cameraPreview" class="camera-preview" autoplay playsinline muted></video>
+        <button class="snap-overlay" id="snapBtn" onclick="snapPhoto()">✅ Snap Photo</button>
+      </div>
       <img id="capturedPreview" class="captured-preview" alt="Captured">
       <canvas id="snapCanvas" style="display:none"></canvas>
       <div class="camera-btns">
         <button class="btn-camera" onclick="startCamera()">📷 Open Camera</button>
-        <button class="btn-camera" id="snapBtn" style="display:none" onclick="snapPhoto()">✅ Snap Photo</button>
         <button class="btn-camera" onclick="document.getElementById('fileInput').click()">📁 Upload Photo</button>
         <button class="btn-camera" id="clearPhotoBtn" style="display:none" onclick="clearPhoto()">🗑 Remove Photo</button>
       </div>
@@ -454,9 +470,8 @@
     document.getElementById('f-date').value = today;
     document.getElementById('f-platform').value = '';
     document.getElementById('f-notes').value = '';
-    document.getElementById('cameraPreview').style.display = 'none';
+    document.getElementById('cameraViewport').style.display = 'none';
     document.getElementById('capturedPreview').style.display = 'none';
-    document.getElementById('snapBtn').style.display = 'none';
     document.getElementById('clearPhotoBtn').style.display = 'none';
     document.getElementById('episodeRow').style.display = 'none';
     updateStarUI(0);
@@ -556,9 +571,8 @@
       cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
       const vid = document.getElementById('cameraPreview');
       vid.srcObject = cameraStream;
-      vid.style.display = 'block';
+      document.getElementById('cameraViewport').style.display = 'block';
       document.getElementById('capturedPreview').style.display = 'none';
-      document.getElementById('snapBtn').style.display = 'inline-flex';
       document.getElementById('clearPhotoBtn').style.display = 'none';
       capturedPhoto = null;
     } catch (err) {
@@ -577,8 +591,7 @@
     capturedPhoto = canvas.toDataURL('image/jpeg', 0.7);
     document.getElementById('capturedPreview').src = capturedPhoto;
     document.getElementById('capturedPreview').style.display = 'block';
-    document.getElementById('cameraPreview').style.display = 'none';
-    document.getElementById('snapBtn').style.display = 'none';
+    document.getElementById('cameraViewport').style.display = 'none';
     document.getElementById('clearPhotoBtn').style.display = 'inline-flex';
     stopCamera();
   }
@@ -615,8 +628,7 @@
 
   function stopCamera() {
     if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
-    document.getElementById('cameraPreview').style.display = 'none';
-    document.getElementById('snapBtn').style.display = 'none';
+    document.getElementById('cameraViewport').style.display = 'none';
   }
 
   function toggleEpisodeRow() {
