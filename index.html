@@ -168,34 +168,34 @@
   }
   .star-btn.lit { color: var(--star); }
 
-  .camera-section {
+  .photo-section {
     border: 2px dashed var(--border); border-radius: 10px;
     padding: 16px; text-align: center; margin-bottom: 16px;
   }
-  .camera-viewport {
-    position: relative; width: 100%; border-radius: 8px;
-    overflow: hidden; background: #000; margin-bottom: 10px; display: none;
-  }
-  .camera-preview {
-    width: 100%; max-height: 260px; object-fit: cover;
-    border-radius: 8px; display: block;
-  }
-  .snap-overlay {
-    position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
-    background: rgba(229,9,20,0.9); color: white; border: none;
-    padding: 10px 24px; border-radius: 24px; font-size: 15px; font-weight: 600;
-    cursor: pointer; white-space: nowrap; backdrop-filter: blur(4px);
-  }
-  .snap-overlay:hover { background: rgba(229,9,20,1); }
   .captured-preview { width: 100%; border-radius: 8px; margin-bottom: 10px; display: none; }
-  .camera-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-  .btn-camera {
+  .photo-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .btn-upload {
     background: var(--surface2); border: 1px solid var(--border);
     color: var(--text); padding: 8px 16px; border-radius: 8px;
     cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px;
   }
-  .btn-camera:hover { border-color: var(--accent); }
+  .btn-upload:hover { border-color: var(--accent); }
   #fileInput { display: none; }
+
+  .viewer-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+  .viewer-btn {
+    background: var(--surface2); border: 2px solid var(--border);
+    color: var(--muted); padding: 8px 16px; border-radius: 20px;
+    cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.15s;
+  }
+  .viewer-btn:hover { border-color: var(--accent); color: var(--text); }
+  .viewer-btn.selected { background: var(--accent); border-color: var(--accent); color: white; }
+  .card-viewer {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 3px 10px; font-size: 12px;
+    font-weight: 500; margin-bottom: 8px; width: fit-content;
+  }
 
   .btn-save {
     width: 100%; background: var(--accent); color: white; border: none;
@@ -257,20 +257,25 @@
     <button class="modal-close" onclick="closeModal('addModal')">&#x2715;</button>
     <h2 id="modalTitle">Add Entry</h2>
 
-    <div class="camera-section">
-      <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Snap a photo of the TV screen (optional)</p>
-      <div class="camera-viewport" id="cameraViewport">
-        <video id="cameraPreview" class="camera-preview" autoplay playsinline muted></video>
-        <button class="snap-overlay" id="snapBtn" onclick="snapPhoto()">✅ Snap Photo</button>
-      </div>
-      <img id="capturedPreview" class="captured-preview" alt="Captured">
+    <div class="photo-section">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Upload a photo (optional)</p>
+      <img id="capturedPreview" class="captured-preview" alt="Screenshot">
       <canvas id="snapCanvas" style="display:none"></canvas>
-      <div class="camera-btns">
-        <button class="btn-camera" onclick="startCamera()">📷 Open Camera</button>
-        <button class="btn-camera" onclick="document.getElementById('fileInput').click()">📁 Upload Photo</button>
-        <button class="btn-camera" id="clearPhotoBtn" style="display:none" onclick="clearPhoto()">🗑 Remove Photo</button>
+      <div class="photo-btns">
+        <button class="btn-upload" onclick="document.getElementById('fileInput').click()">📁 Upload Photo</button>
+        <button class="btn-upload" id="clearPhotoBtn" style="display:none" onclick="clearPhoto()">🗑 Remove Photo</button>
       </div>
       <input type="file" id="fileInput" accept="image/*" onchange="handleFileUpload(event)">
+    </div>
+
+    <div class="form-group">
+      <label>Who watched it?</label>
+      <div class="viewer-picker">
+        <button class="viewer-btn" data-name="Ross" onclick="toggleViewer('Ross')">Ross</button>
+        <button class="viewer-btn" data-name="Tanya" onclick="toggleViewer('Tanya')">Tanya</button>
+        <button class="viewer-btn" data-name="Sharon" onclick="toggleViewer('Sharon')">Sharon</button>
+        <button class="viewer-btn" data-name="Shannon" onclick="toggleViewer('Shannon')">Shannon</button>
+      </div>
     </div>
 
     <div class="form-group">
@@ -334,8 +339,8 @@
   let currentTab = 'all';
   let editingId = null;
   let capturedPhoto = null;
-  let cameraStream = null;
   let currentRating = 0;
+  let selectedViewers = [];
 
   // ─── API ─────────────────────────────────────────────────────────────────────
   async function loadEntries() {
@@ -424,11 +429,13 @@
       : `<div class="card-photo-placeholder">${typeIcons[e.type]||'🎥'}</div>`;
     const date = e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '';
     const meta = [date, e.platform, e.episode].filter(Boolean).join(' · ');
+    const viewers = (e.viewers||[]).join(', ');
     return `<div class="card">
       ${photo}
       <div class="card-body">
         <div class="card-type">${typeIcons[e.type]||'🎥'} ${typeLabels[e.type]||'Other'}</div>
         <div class="card-title">${escHtml(e.title)}</div>
+        ${viewers ? `<div class="card-viewer">👤 ${escHtml(viewers)}</div>` : ''}
         ${meta ? `<div class="card-meta">${escHtml(meta)}</div>` : ''}
         ${stars ? `<div class="card-stars">${stars}</div>` : ''}
         ${e.notes ? `<div class="card-notes">${escHtml(e.notes)}</div>` : ''}
@@ -460,7 +467,7 @@
     editingId = id;
     capturedPhoto = null;
     currentRating = 0;
-    stopCamera();
+    selectedViewers = [];
 
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('modalTitle').textContent = id ? 'Edit Entry' : 'Add Entry';
@@ -470,11 +477,11 @@
     document.getElementById('f-date').value = today;
     document.getElementById('f-platform').value = '';
     document.getElementById('f-notes').value = '';
-    document.getElementById('cameraViewport').style.display = 'none';
     document.getElementById('capturedPreview').style.display = 'none';
     document.getElementById('clearPhotoBtn').style.display = 'none';
     document.getElementById('episodeRow').style.display = 'none';
     updateStarUI(0);
+    updateViewerUI([]);
 
     if (id) {
       const e = entries.find(x => x.id === id);
@@ -486,7 +493,9 @@
         document.getElementById('f-platform').value = e.platform||'';
         document.getElementById('f-notes').value = e.notes||'';
         currentRating = e.rating||0;
+        selectedViewers = [...(e.viewers||[])];
         updateStarUI(currentRating);
+        updateViewerUI(selectedViewers);
         toggleEpisodeRow();
         if (e.photo) {
           capturedPhoto = e.photo;
@@ -503,7 +512,6 @@
 
   function closeModal(id) {
     document.getElementById(id).classList.remove('open');
-    stopCamera();
   }
 
   async function saveEntry() {
@@ -519,6 +527,7 @@
       platform: document.getElementById('f-platform').value.trim(),
       rating: currentRating,
       notes: document.getElementById('f-notes').value.trim(),
+      viewers: selectedViewers,
       photo: capturedPhoto || null,
     };
 
@@ -565,37 +574,23 @@
     });
   }
 
-  // ─── CAMERA ──────────────────────────────────────────────────────────────────
-  async function startCamera() {
-    try {
-      cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-      const vid = document.getElementById('cameraPreview');
-      vid.srcObject = cameraStream;
-      document.getElementById('cameraViewport').style.display = 'block';
-      document.getElementById('capturedPreview').style.display = 'none';
-      document.getElementById('clearPhotoBtn').style.display = 'none';
-      capturedPhoto = null;
-    } catch (err) {
-      showToast('Camera unavailable — try uploading a photo instead', true);
+  // ─── VIEWERS ─────────────────────────────────────────────────────────────────
+  function toggleViewer(name) {
+    if (selectedViewers.includes(name)) {
+      selectedViewers = selectedViewers.filter(v => v !== name);
+    } else {
+      selectedViewers.push(name);
     }
+    updateViewerUI(selectedViewers);
   }
 
-  function snapPhoto() {
-    const vid = document.getElementById('cameraPreview');
-    const canvas = document.getElementById('snapCanvas');
-    const maxW = 800;
-    const scale = Math.min(1, maxW / vid.videoWidth);
-    canvas.width = Math.round(vid.videoWidth * scale);
-    canvas.height = Math.round(vid.videoHeight * scale);
-    canvas.getContext('2d').drawImage(vid, 0, 0, canvas.width, canvas.height);
-    capturedPhoto = canvas.toDataURL('image/jpeg', 0.7);
-    document.getElementById('capturedPreview').src = capturedPhoto;
-    document.getElementById('capturedPreview').style.display = 'block';
-    document.getElementById('cameraViewport').style.display = 'none';
-    document.getElementById('clearPhotoBtn').style.display = 'inline-flex';
-    stopCamera();
+  function updateViewerUI(selected) {
+    document.querySelectorAll('.viewer-btn').forEach(btn => {
+      btn.classList.toggle('selected', selected.includes(btn.dataset.name));
+    });
   }
 
+  // ─── PHOTO UPLOAD ────────────────────────────────────────────────────────────
   function handleFileUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -613,7 +608,6 @@
       document.getElementById('capturedPreview').style.display = 'block';
       document.getElementById('clearPhotoBtn').style.display = 'inline-flex';
       URL.revokeObjectURL(url);
-      stopCamera();
     };
     img.src = url;
     e.target.value = '';
@@ -623,12 +617,6 @@
     capturedPhoto = null;
     document.getElementById('capturedPreview').style.display = 'none';
     document.getElementById('clearPhotoBtn').style.display = 'none';
-    stopCamera();
-  }
-
-  function stopCamera() {
-    if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
-    document.getElementById('cameraViewport').style.display = 'none';
   }
 
   function toggleEpisodeRow() {
