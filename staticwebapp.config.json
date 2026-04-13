@@ -10,11 +10,11 @@
     },
     {
       "route": "/api/*",
-      "allowedRoles": ["member"]
+      "allowedRoles": ["authenticated"]
     },
     {
       "route": "/*",
-      "allowedRoles": ["member"]
+      "allowedRoles": ["authenticated"]
     }
   ],
   "responseOverrides": {
