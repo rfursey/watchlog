@@ -1,12 +1,31 @@
 {
   "routes": [
     {
-      "route": "/api/*",
+      "route": "/login",
       "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/.auth/*",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/api/*",
+      "allowedRoles": ["member"]
+    },
+    {
+      "route": "/*",
+      "allowedRoles": ["member"]
     }
   ],
+  "responseOverrides": {
+    "401": {
+      "redirect": "/login",
+      "statusCode": 302
+    }
+  },
   "navigationFallback": {
-    "rewrite": "/index.html"
+    "rewrite": "/index.html",
+    "exclude": ["/login", "/.auth/*"]
   },
   "mimeTypes": {
     ".json": "application/json"
