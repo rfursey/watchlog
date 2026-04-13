@@ -39,7 +39,8 @@
   }
   .nav-brand { font-size: 20px; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
   .nav-brand span { color: var(--text); }
-  .nav-tabs { display: flex; gap: 4px; }
+  .nav-tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+  .nav-tabs::-webkit-scrollbar { display: none; }
   .nav-tab {
     background: none; border: none; color: var(--muted);
     padding: 8px 14px; border-radius: 8px; cursor: pointer;
@@ -224,6 +225,10 @@
     <button class="nav-tab active" onclick="showTab('all')">All</button>
     <button class="nav-tab" onclick="showTab('movie')">Movies</button>
     <button class="nav-tab" onclick="showTab('show')">Shows</button>
+    <button class="nav-tab" onclick="showTab('Ross')">Ross</button>
+    <button class="nav-tab" onclick="showTab('Tanya')">Tanya</button>
+    <button class="nav-tab" onclick="showTab('Sharon')">Sharon</button>
+    <button class="nav-tab" onclick="showTab('Shannon')">Shannon</button>
   </div>
   <button class="btn-add" id="btnAdd" onclick="openAddModal()">
     <span style="font-size:18px">+</span> <span>Add Entry</span>
@@ -377,8 +382,11 @@
   // ─── TABS ─────────────────────────────────────────────────────────────────────
   function showTab(tab) {
     currentTab = tab;
-    document.querySelectorAll('.nav-tab').forEach((btn, i) => {
-      btn.classList.toggle('active', ['all','movie','show'][i] === tab);
+    document.querySelectorAll('.nav-tab').forEach(btn => {
+      btn.classList.toggle('active', btn.textContent.trim() === tab ||
+        (tab === 'all' && btn.textContent.trim() === 'All') ||
+        (tab === 'movie' && btn.textContent.trim() === 'Movies') ||
+        (tab === 'show' && btn.textContent.trim() === 'Shows'));
     });
     renderList();
   }
@@ -388,10 +396,12 @@
     const q = document.getElementById('searchInput').value.toLowerCase();
     const sort = document.getElementById('sortSelect').value;
 
+    const peopleTabs = ['Ross','Tanya','Sharon','Shannon'];
     let list = entries.filter(e => {
       const matchTab = currentTab === 'all'
         || e.type === currentTab
-        || (currentTab === 'show' && ['show','mini-series'].includes(e.type));
+        || (currentTab === 'show' && ['show','mini-series'].includes(e.type))
+        || (peopleTabs.includes(currentTab) && (e.viewers||[]).includes(currentTab));
       const matchSearch = !q
         || (e.title||'').toLowerCase().includes(q)
         || (e.notes||'').toLowerCase().includes(q)
