@@ -108,6 +108,21 @@
   }
   .btn-sm:hover { color: var(--text); border-color: var(--muted); }
   .btn-sm.danger:hover { color: #ff4444; border-color: #ff4444; }
+  .btn-sm.watched { color: #4caf50; border-color: #4caf50; }
+  .btn-sm.watched:hover { background: #4caf5022; }
+
+  .status-toggle { display: flex; gap: 0; margin-bottom: 16px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+  .status-btn {
+    flex: 1; background: none; border: none; color: var(--muted);
+    padding: 10px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s;
+  }
+  .status-btn.active { background: var(--accent); color: white; }
+  .watchlist-badge {
+    display: inline-block; background: #ff6b3522; color: var(--accent2);
+    border: 1px solid var(--accent2); border-radius: 4px;
+    font-size: 11px; font-weight: 600; padding: 2px 7px;
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;
+  }
 
   /* LOADING */
   .loading {
@@ -229,6 +244,7 @@
     <button class="nav-tab" onclick="showTab('Tanya')">Tanya</button>
     <button class="nav-tab" onclick="showTab('Sharon')">Sharon</button>
     <button class="nav-tab" onclick="showTab('Shannon')">Shannon</button>
+    <button class="nav-tab" onclick="showTab('watchlist')" style="color:#ff6b35">Watchlist</button>
   </div>
   <button class="btn-add" id="btnAdd" onclick="openAddModal()">
     <span style="font-size:18px">+</span> <span>Add Entry</span>
@@ -262,6 +278,11 @@
     <button class="modal-close" onclick="closeModal('addModal')">&#x2715;</button>
     <h2 id="modalTitle">Add Entry</h2>
 
+    <div class="status-toggle">
+      <button class="status-btn active" id="statusWatched" onclick="setStatus('watched')">✅ Already Watched</button>
+      <button class="status-btn" id="statusWantlist" onclick="setStatus('watchlist')">🔖 Want to Watch</button>
+    </div>
+
     <div class="photo-section">
       <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Upload a photo (optional)</p>
       <img id="capturedPreview" class="captured-preview" alt="Screenshot">
@@ -271,16 +292,6 @@
         <button class="btn-upload" id="clearPhotoBtn" style="display:none" onclick="clearPhoto()">🗑 Remove Photo</button>
       </div>
       <input type="file" id="fileInput" accept="image/*" onchange="handleFileUpload(event)">
-    </div>
-
-    <div class="form-group">
-      <label>Who watched it?</label>
-      <div class="viewer-picker">
-        <button class="viewer-btn" data-name="Ross" onclick="toggleViewer('Ross')">Ross</button>
-        <button class="viewer-btn" data-name="Tanya" onclick="toggleViewer('Tanya')">Tanya</button>
-        <button class="viewer-btn" data-name="Sharon" onclick="toggleViewer('Sharon')">Sharon</button>
-        <button class="viewer-btn" data-name="Shannon" onclick="toggleViewer('Shannon')">Shannon</button>
-      </div>
     </div>
 
     <div class="form-group">
@@ -302,24 +313,37 @@
       <label>Season / Episode (optional)</label>
       <input type="text" id="f-episode" placeholder="e.g. S2 E4, or 'Season 1'">
     </div>
-    <div class="form-group">
-      <label>Date Watched</label>
-      <input type="date" id="f-date">
-    </div>
-    <div class="form-group">
-      <label>Where watched (optional)</label>
-      <input type="text" id="f-platform" placeholder="e.g. Netflix, Disney+, Prime...">
-    </div>
-    <div class="form-group">
-      <label>Rating</label>
-      <div class="star-picker" id="starPicker">
-        <button class="star-btn" data-val="1" onclick="setRating(1)">★</button>
-        <button class="star-btn" data-val="2" onclick="setRating(2)">★</button>
-        <button class="star-btn" data-val="3" onclick="setRating(3)">★</button>
-        <button class="star-btn" data-val="4" onclick="setRating(4)">★</button>
-        <button class="star-btn" data-val="5" onclick="setRating(5)">★</button>
+
+    <div id="watchedFields">
+      <div class="form-group">
+        <label>Who watched it?</label>
+        <div class="viewer-picker">
+          <button class="viewer-btn" data-name="Ross" onclick="toggleViewer('Ross')">Ross</button>
+          <button class="viewer-btn" data-name="Tanya" onclick="toggleViewer('Tanya')">Tanya</button>
+          <button class="viewer-btn" data-name="Sharon" onclick="toggleViewer('Sharon')">Sharon</button>
+          <button class="viewer-btn" data-name="Shannon" onclick="toggleViewer('Shannon')">Shannon</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Date Watched</label>
+        <input type="date" id="f-date">
+      </div>
+      <div class="form-group">
+        <label>Where watched (optional)</label>
+        <input type="text" id="f-platform" placeholder="e.g. Netflix, Disney+, Prime...">
+      </div>
+      <div class="form-group">
+        <label>Rating</label>
+        <div class="star-picker" id="starPicker">
+          <button class="star-btn" data-val="1" onclick="setRating(1)">★</button>
+          <button class="star-btn" data-val="2" onclick="setRating(2)">★</button>
+          <button class="star-btn" data-val="3" onclick="setRating(3)">★</button>
+          <button class="star-btn" data-val="4" onclick="setRating(4)">★</button>
+          <button class="star-btn" data-val="5" onclick="setRating(5)">★</button>
+        </div>
       </div>
     </div>
+
     <div class="form-group">
       <label>Notes (optional)</label>
       <textarea id="f-notes" placeholder="What did you think? Would you recommend it?"></textarea>
@@ -346,6 +370,7 @@
   let capturedPhoto = null;
   let currentRating = 0;
   let selectedViewers = [];
+  let currentStatus = 'watched';
 
   // ─── API ─────────────────────────────────────────────────────────────────────
   async function loadEntries() {
@@ -398,10 +423,15 @@
 
     const peopleTabs = ['Ross','Tanya','Sharon','Shannon'];
     let list = entries.filter(e => {
-      const matchTab = currentTab === 'all'
-        || e.type === currentTab
-        || (currentTab === 'show' && ['show','mini-series'].includes(e.type))
-        || (peopleTabs.includes(currentTab) && (e.viewers||[]).includes(currentTab));
+      const status = e.status || 'watched';
+      const matchTab = currentTab === 'watchlist'
+        ? status === 'watchlist'
+        : status === 'watched' && (
+            currentTab === 'all'
+            || e.type === currentTab
+            || (currentTab === 'show' && ['show','mini-series'].includes(e.type))
+            || (peopleTabs.includes(currentTab) && (e.viewers||[]).includes(currentTab))
+          );
       const matchSearch = !q
         || (e.title||'').toLowerCase().includes(q)
         || (e.notes||'').toLowerCase().includes(q)
@@ -440,9 +470,11 @@
     const date = e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '';
     const meta = [date, e.platform, e.episode].filter(Boolean).join(' · ');
     const viewers = (e.viewers||[]).join(', ');
+    const isWatchlist = (e.status === 'watchlist');
     return `<div class="card">
       ${photo}
       <div class="card-body">
+        ${isWatchlist ? `<div class="watchlist-badge">🔖 Want to Watch</div>` : ''}
         <div class="card-type">${typeIcons[e.type]||'🎥'} ${typeLabels[e.type]||'Other'}</div>
         <div class="card-title">${escHtml(e.title)}</div>
         ${viewers ? `<div class="card-viewer">👤 ${escHtml(viewers)}</div>` : ''}
@@ -450,6 +482,7 @@
         ${stars ? `<div class="card-stars">${stars}</div>` : ''}
         ${e.notes ? `<div class="card-notes">${escHtml(e.notes)}</div>` : ''}
         <div class="card-actions">
+          ${isWatchlist ? `<button class="btn-sm watched" onclick="markWatched('${e.id}')">✅ Mark Watched</button>` : ''}
           <button class="btn-sm" onclick="editEntry('${e.id}')">✏ Edit</button>
           <button class="btn-sm danger" onclick="deleteEntry('${e.id}')">🗑 Delete</button>
         </div>
@@ -473,11 +506,32 @@
   }
 
   // ─── MODAL ───────────────────────────────────────────────────────────────────
+  function setStatus(status) {
+    currentStatus = status;
+    document.getElementById('statusWatched').classList.toggle('active', status === 'watched');
+    document.getElementById('statusWantlist').classList.toggle('active', status === 'watchlist');
+    document.getElementById('watchedFields').style.display = status === 'watched' ? 'block' : 'none';
+  }
+
+  async function markWatched(id) {
+    const e = entries.find(x => x.id === id);
+    if (!e) return;
+    e.status = 'watched';
+    try {
+      await apiSave(e);
+      renderList();
+      showToast('Moved to watched!');
+    } catch (err) {
+      showToast('Could not update — ' + err.message, true);
+    }
+  }
+
   function openAddModal(id = null) {
     editingId = id;
     capturedPhoto = null;
     currentRating = 0;
     selectedViewers = [];
+    currentStatus = 'watched';
 
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('modalTitle').textContent = id ? 'Edit Entry' : 'Add Entry';
@@ -492,6 +546,7 @@
     document.getElementById('episodeRow').style.display = 'none';
     updateStarUI(0);
     updateViewerUI([]);
+    setStatus('watched');
 
     if (id) {
       const e = entries.find(x => x.id === id);
@@ -503,9 +558,11 @@
         document.getElementById('f-platform').value = e.platform||'';
         document.getElementById('f-notes').value = e.notes||'';
         currentRating = e.rating||0;
+        currentStatus = e.status || 'watched';
         selectedViewers = [...(e.viewers||[])];
         updateStarUI(currentRating);
         updateViewerUI(selectedViewers);
+        setStatus(currentStatus);
         toggleEpisodeRow();
         if (e.photo) {
           capturedPhoto = e.photo;
@@ -537,6 +594,7 @@
       platform: document.getElementById('f-platform').value.trim(),
       rating: currentRating,
       notes: document.getElementById('f-notes').value.trim(),
+      status: currentStatus,
       viewers: selectedViewers,
       photo: capturedPhoto || null,
     };
